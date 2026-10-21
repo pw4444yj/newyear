@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fffaf5">
+  <title>오늘도, 한 걸음 — 응원 달력</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #352d3b;
+      --muted: #928995;
+      --paper: #fffaf5;
+      --white: #fff;
+      --line: #f0e9e4;
+      --coral: #f47f70;
+      --lavender: #eee9fb;
+      --shadow: 0 18px 50px rgba(77, 54, 61, .08);
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 8% 10%, rgba(255, 226, 215, .45), transparent 28rem),
+        radial-gradient(ellipse at 95% 78%, rgba(232, 224, 251, .46), transparent 30rem),
+        var(--paper);
+    }
+    button, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(244, 127, 112, .42);
+      outline-offset: 3px;
+    }
+    .app { width: min(1100px, 100%); margin: auto; padding: 25px 32px 36px; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 800; letter-spacing: -.04em; }
+    .brand-mark {
+      display: grid; width: 38px; height: 38px; place-items: center; border-radius: 14px;
+      color: white; background: linear-gradient(145deg, #ffad98, #f27b7b); box-shadow: 0 7px 16px #f47f7040;
+      font-size: 20px;
+    }
+    .top-note { color: var(--muted); font-size: 12px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .85fr); gap: 22px; align-items: stretch; }
+    .card { background: rgba(255,255,255,.86); border: 1px solid rgba(255,255,255,.95); border-radius: 26px; box-shadow: var(--shadow); }
+    .calendar-card { padding: 26px 28px 24px; }
+    .month-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .month-copy { display: flex; align-items: baseline; gap: 9px; }
+    .month-title { margin: 0; font-size: 27px; font-weight: 850; letter-spacing: -.055em; }
+    .month-year { color: var(--muted); font-size: 14px; font-weight: 600; }
+    .month-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-button, .today-button {
+      display: grid; height: 36px; place-items: center; border: 1px solid var(--line); background: white; cursor: pointer;
+      transition: transform .18s, background .18s;
+    }
+    .icon-button { width: 36px; border-radius: 12px; font-size: 19px; }
+    .today-button { padding: 0 13px; border-radius: 12px; color: #e66f66; font-size: 12px; font-weight: 750; }
+    .icon-button:hover, .today-button:hover { transform: translateY(-2px); background: #fff5f1; }
+    .weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; }
+    .weekdays { margin-bottom: 8px; }
+    .weekday { padding: 7px 0; color: #aaa1a7; font-size: 11px; font-weight: 700; }
+    .weekday:first-child { color: #ef9286; }
+    .weekday:last-child { color: #9b91cf; }
+    .day {
+      position: relative; display: grid; min-height: 66px; place-items: center; padding: 5px 2px;
+      border: 0; border-radius: 16px; background: transparent; cursor: pointer; transition: background .18s, transform .18s;
+    }
+    .day:hover { background: #fff5f0; transform: translateY(-1px); }
+    .day-number { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; font-size: 13px; font-weight: 650; }
+    .day.other-month .day-number { color: #d5cfd3; }
+    .day.sunday .day-number { color: #ed8e82; }
+    .day.saturday .day-number { color: #9387cb; }
+    .day.today .day-number { box-shadow: inset 0 0 0 1.5px #f3a397; color: #df7065; }
+    .day.selected .day-number { color: #fff; background: var(--coral); box-shadow: 0 5px 12px #f47f7052; }
+    .day.selected.saturday .day-number, .day.selected.sunday .day-number { color: #fff; }
+    .day.has-note::after {
+      position: absolute; bottom: 6px; width: 5px; height: 5px; border-radius: 50%; background: #f3a397; content: "";
+    }
+    .calendar-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; padding-top: 15px; border-top: 1px solid #f5efeb; }
+    .legend { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; background: #f3a397; }
+    .selected-label { color: #8d838e; font-size: 11px; }
+
+    .side-column { display: flex; flex-direction: column; gap: 16px; }
+    .cheer-card {
+      position: relative; display: flex; min-height: 250px; overflow: hidden; padding: 25px 23px 20px;
+      border-radius: 26px; background: linear-gradient(132deg, var(--tint, #ffede7), #fff8f2 70%); box-shadow: var(--shadow);
+    }
+    .cheer-copy { position: relative; z-index: 1; width: 58%; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 5px; color: #b2776e; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+    .cheer-title { margin: 15px 0 8px; font-size: 25px; font-weight: 850; line-height: 1.35; letter-spacing: -.06em; }
+    .cheer-title span { color: #eb7e70; }
+    .dream { max-width: 210px; margin: 0; color: #81777f; font-size: 12px; line-height: 1.75; word-break: keep-all; }
+    .character-wrap { position: absolute; right: 4px; bottom: 2px; width: 48%; max-width: 205px; }
+    .character { display: block; width: 100%; height: auto; filter: drop-shadow(0 9px 9px rgba(87, 62, 65, .1)); }
+    .month-caption { position: absolute; right: 17px; top: 17px; color: #a38b8b; font-size: 10px; font-weight: 700; }
+    .note-card { flex: 1; padding: 21px 22px 18px; }
+    .note-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+    .note-title { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.03em; }
+    .note-date { color: var(--muted); font-size: 11px; }
+    .note-hint { margin: 0 0 12px; color: #a69da3; font-size: 11px; }
+    .note-input {
+      display: block; width: 100%; min-height: 74px; resize: vertical; padding: 12px 13px; border: 1px solid #f1eae6;
+      border-radius: 14px; color: var(--ink); background: #fffcfa; font-size: 12px; line-height: 1.6;
+    }
+    .note-input::placeholder { color: #c0b7bc; }
+    .note-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+    .save-status { color: #a0989e; font-size: 10px; }
+    .save-button { padding: 9px 15px; border: 0; border-radius: 11px; color: white; background: #f28a7e; cursor: pointer; font-size: 11px; font-weight: 750; }
+    .save-button:hover { background: #e9786c; }
+    .footer-note { margin: 20px 0 0; color: #a59ba1; text-align: center; font-size: 10px; }
+
+    @media (max-width: 760px) {
+      .app { max-width: 540px; padding: 19px 17px 28px; }
+      .topbar { margin-bottom: 17px; }
+      .top-note { font-size: 10px; }
+      .layout { grid-template-columns: 1fr; gap: 15px; }
+      .calendar-card { padding: 21px 16px 17px; border-radius: 23px; }
+      .month-heading { margin-bottom: 16px; }
+      .month-title { font-size: 24px; }
+      .day { min-height: 55px; border-radius: 13px; }
+      .day-number { width: 32px; height: 32px; }
+      .day.has-note::after { bottom: 3px; }
+      .side-column { gap: 13px; }
+      .cheer-card { min-height: 222px; border-radius: 23px; }
+      .cheer-title { margin-top: 12px; font-size: 23px; }
+      .character-wrap { width: 45%; right: 9px; }
+      .note-card { padding: 19px; border-radius: 23px; }
+      .note-input { min-height: 68px; }
+      .footer-note { margin-top: 16px; }
+    }
+    @media (max-width: 370px) {
+      .app { padding-right: 12px; padding-left: 12px; }
+      .calendar-card { padding-right: 11px; padding-left: 11px; }
+      .day { min-height: 49px; }
+      .day-number { width: 29px; height: 29px; font-size: 12px; }
+      .cheer-card { padding-left: 18px; }
+      .cheer-title { font-size: 21px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">☀</span><span>오늘도, 한 걸음</span></div>
+      <span class="top-note">너의 속도로, 충분히 잘하고 있어 🌱</span>
+    </header>
+
+    <div class="layout">
+      <section class="card calendar-card" aria-label="달력">
+        <div class="month-heading">
+          <div class="month-copy">
+            <h1 class="month-title" id="month-title"></h1>
+            <span class="month-year" id="month-year"></span>
+          </div>
+          <div class="month-actions">
+            <button class="icon-button" id="previous-month" type="button" aria-label="이전 달">‹</button>
+            <button class="today-button" id="go-today" type="button">오늘</button>
+            <button class="icon-button" id="next-month" type="button" aria-label="다음 달">›</button>
+          </div>
+        </div>
+        <div class="weekdays" aria-hidden="true">
+          <span class="weekday">일</span><span class="weekday">월</span><span class="weekday">화</span>
+          <span class="weekday">수</span><span class="weekday">목</span><span class="weekday">금</span><span class="weekday">토</span>
+        </div>
+        <div class="days" id="calendar-days" role="grid" aria-label="날짜"></div>
+        <div class="calendar-footer">
+          <span class="legend"><i class="legend-dot"></i> 작은 기록이 있어요</span>
+          <span class="selected-label" id="selected-label"></span>
+        </div>
+      </section>
+
+      <div class="side-column">
+        <section class="cheer-card" id="cheer-card" aria-live="polite" aria-label="이번 달 응원">
+          <span class="month-caption" id="month-caption"></span>
+          <div class="cheer-copy">
+            <span class="eyebrow">✦ 이달의 응원 친구</span>
+            <h2 class="cheer-title" id="cheer-title"></h2>
+            <p class="dream" id="dream-text"></p>
+          </div>
+          <div class="character-wrap" id="character-wrap" aria-hidden="true"></div>
+        </section>
+
+        <section class="card note-card" aria-label="하루 기록">
+          <div class="note-head">
+            <h2 class="note-title">오늘의 작은 기록 ✏️</h2>
+            <span class="note-date" id="note-date"></span>
+          </div>
+          <p class="note-hint">잘한 일도, 마음속 꿈도 편하게 적어봐요.</p>
+          <textarea class="note-input" id="note-input" maxlength="500" placeholder="오늘의 나에게 들려주고 싶은 말은?"></textarea>
+          <div class="note-actions">
+            <span class="save-status" id="save-status" aria-live="polite">이 기기에만 저장돼요</span>
+            <button class="save-button" id="save-note" type="button">기록 저장</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <p class="footer-note">매일 조금씩, 너의 꿈에 가까워지고 있어요.</p>
+  </main>
+
+  <script>
+    const monthFriends = [
+      { name: "새해의 다짐을 응원해!", friend: "햇살 토끼", cheer: "작은 시작도<br><span>멋진 용기야!</span>", dream: "네가 품은 새해의 꿈, 하나씩 꼭 피어날 거야. 오늘도 힘내!", tint: "#fff0d9", color: "#f8be70", accent: "#f39b78", prop: "🌱" },
+      { name: "마음을 포근히 안아줄게", friend: "몽글 곰", cheer: "천천히 가도<br><span>괜찮아, 잘하고 있어!</span>", dream: "따뜻한 마음으로 네 꿈을 안아주는 달. 너의 속도면 충분해.", tint: "#f7eafa", color: "#bd9ad2", accent: "#f1a6b4", prop: "♡" },
+      { name: "새싹처럼 자라나는 중!", friend: "초록 병아리", cheer: "너의 꿈에<br><span>새싹이 났어!</span>", dream: "용기 내어 내디딘 한 걸음이 언젠가 커다란 숲이 될 거야.", tint: "#e6f4dc", color: "#a8c979", accent: "#f3ce72", prop: "✿" },
+      { name: "꽃피울 너를 기다려", friend: "꽃구름 여우", cheer: "너만의 계절이<br><span>오고 있어!</span>", dream: "아직 보이지 않아도 괜찮아. 네 꿈은 조용히 자라고 있거든.", tint: "#ffe8ee", color: "#f2a0b2", accent: "#c6a0da", prop: "✿" },
+      { name: "너의 반짝임을 믿어", friend: "별빛 고양이", cheer: "넌 생각보다<br><span>더 반짝여!</span>", dream: "너의 마음이 향하는 곳에, 반짝이는 가능성이 기다리고 있어.", tint: "#e9e9fa", color: "#9d9ed4", accent: "#f3c778", prop: "✦" },
+      { name: "오늘도 씩씩하게!", friend: "파도 강아지", cheer: "한 번 더 도전하면<br><span>그게 바로 멋짐!</span>", dream: "실수해도 괜찮아. 파도처럼 다시 일어나는 네가 정말 멋져.", tint: "#e0f2f2", color: "#83c6ca", accent: "#f3ae89", prop: "〰" },
+      { name: "쉬어가도 괜찮아", friend: "수박 다람쥐", cheer: "충전하는 시간도<br><span>꿈의 일부야!</span>", dream: "잠깐 쉬어가는 오늘도 꿈을 향한 여정이야. 마음껏 숨을 골라.", tint: "#fff0e4", color: "#dba66e", accent: "#ef8588", prop: "♡" },
+      { name: "네 안의 빛을 따라가", friend: "달토끼 루루", cheer: "어두운 밤에도<br><span>너는 빛나!</span>", dream: "아직 멀게 느껴지는 꿈도 괜찮아. 네 빛을 따라 한 걸음씩.", tint: "#e8e6f7", color: "#aaa3dc", accent: "#f2c0cf", prop: "☾" },
+      { name: "새로운 꿈을 펼쳐봐", friend: "책벌레 도리", cheer: "네 이야기는<br><span>이제부터 시작이야!</span>", dream: "페이지를 넘기듯 새로운 계절이 왔어. 네 꿈을 크게 펼쳐봐!", tint: "#fbe9dc", color: "#ce9b71", accent: "#8bbca3", prop: "✦" },
+      { name: "네가 해낸 걸 기억해", friend: "도토리 너구리", cheer: "여기까지 온 너,<br><span>정말 대단해!</span>", dream: "돌아보면 네가 이뤄낸 것들이 반짝여. 스스로를 꼭 칭찬해줘.", tint: "#f6e9dc", color: "#bd927d", accent: "#e8b76f", prop: "🍂" },
+      { name: "꿈을 향해 날아올라", friend: "구름 고래", cheer: "네 꿈의 크기는<br><span>하늘만큼 커도 돼!</span>", dream: "마음껏 상상해도 좋아. 네 꿈은 생각보다 훨씬 멀리 닿을 거야.", tint: "#e4eff9", color: "#8db6d7", accent: "#efbd88", prop: "☁" },
+      { name: "올해도 참 잘했어!", friend: "꼬마 산타곰", cheer: "올 한 해도<br><span>너는 참 멋졌어!</span>", dream: "네가 걸어온 모든 날이 꿈의 일부야. 다음 장도 함께 응원할게!", tint: "#f8e6e5", color: "#d48787", accent: "#eac27d", prop: "✦" }
+    ];
+
+    const today = new Date();
+    let visibleYear = today.getFullYear();
+    let visibleMonth = today.getMonth();
+    let selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const notes = readNotes();
+    const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+
+    function readNotes() {
+      try {
+        return JSON.parse(localStorage.getItem("one-step-calendar-notes") || "{}");
+      } catch (error) {
+        console.error("저장된 기록을 읽지 못했어요.", error);
+        return {};
+      }
+    }
+
+    function dateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function makeCharacter(friend) {
+      const prop = friend.prop;
+      return `<svg class="character" viewBox="0 0 220 230" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="111" cy="211" rx="65" ry="9" fill="#735e6650"/>
+        <path d="M66 92 49 39q-3-10 7-5l43 32M154 92l18-51q4-10 10-1l9 52" fill="${friend.color}" stroke="#735d65" stroke-width="4" stroke-linejoin="round"/>
+        <path d="m62 72 18 22M160 78l17-24" stroke="${friend.accent}" stroke-width="8" stroke-linecap="round"/>
+        <ellipse cx="110" cy="143" rx="62" ry="60" fill="${friend.color}" stroke="#735d65" stroke-width="4"/>
+        <ellipse cx="110" cy="161" rx="32" ry="25" fill="#fff8f0"/>
+        <ellipse cx="88" cy="137" rx="4" ry="5" fill="#493d43"/><ellipse cx="132" cy="137" rx="4" ry="5" fill="#493d43"/>
+        <path d="M103 149q7 7 14 0" fill="none" stroke="#493d43" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="75" cy="151" rx="8" ry="5" fill="#ed958f" opacity=".7"/><ellipse cx="145" cy="151" rx="8" ry="5" fill="#ed958f" opacity=".7"/>
+        <path d="M58 117q-21-2-24 15M162 117q21-2 24 15" fill="none" stroke="#735d65" stroke-width="5" stroke-linecap="round"/>
+        <path d="M91 194q-4 11-13 10M130 194q4 11 13 10" fill="none" stroke="#735d65" stroke-width="6" stroke-linecap="round"/>
+        <path d="M57 101q-14-11-2-19 12-3 15 9M158 98q14-11 2-19-12-3-15 9" fill="${friend.accent}" stroke="#735d65" stroke-width="3"/>
+        <circle cx="166" cy="66" r="17" fill="#fff9f1" stroke="#e9c2a7" stroke-width="2"/>
+        <text x="166" y="72" text-anchor="middle" font-size="18" fill="#e78d79">${prop}</text>
+        <path d="M41 100l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z" fill="#fff" opacity=".9"/>
+      </svg>`;
+    }
+
+    function renderFriend() {
+      const friend = monthFriends[visibleMonth];
+      document.getElementById("cheer-card").style.setProperty("--tint", friend.tint);
+      document.getElementById("month-caption").textContent = `${monthNames[visibleMonth]}의 친구`;
+      document.getElementById("cheer-title").innerHTML = friend.cheer;
+      document.getElementById("dream-text").textContent = `“${friend.dream}”`;
+      document.getElementById("character-wrap").innerHTML = makeCharacter(friend);
+      document.getElementById("character-wrap").setAttribute("aria-label", friend.friend);
+    }
+
+    function renderCalendar() {
+      document.getElementById("month-title").textContent = monthNames[visibleMonth];
+      document.getElementById("month-year").textContent = `${visibleYear}년`;
+      document.getElementById("selected-label").textContent = `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 선택`;
+      const firstDay = new Date(visibleYear, visibleMonth, 1).getDay();
+      const daysInMonth = new Date(visibleYear, visibleMonth + 1, 0).getDate();
+      const previousMonthDays = new Date(visibleYear, visibleMonth, 0).getDate();
+      const grid = document.getElementById("calendar-days");
+      grid.replaceChildren();
+
+      for (let index = 0; index < 42; index += 1) {
+        const dayNumber = index - firstDay + 1;
+        let date;
+        let otherMonth = false;
+        if (dayNumber < 1) {
+          date = new Date(visibleYear, visibleMonth - 1, previousMonthDays + dayNumber);
+          otherMonth = true;
+        } else if (dayNumber > daysInMonth) {
+          date = new Date(visibleYear, visibleMonth + 1, dayNumber - daysInMonth);
+          otherMonth = true;
+        } else {
+          date = new Date(visibleYear, visibleMonth, dayNumber);
+        }
+
+        const button = document.createElement("button");
+        const key = dateKey(date);
+        button.type = "button";
+        button.className = "day";
+        if (otherMonth) button.classList.add("other-month");
+        if (index % 7 === 0) button.classList.add("sunday");
+        if (index % 7 === 6) button.classList.add("saturday");
+        if (key === dateKey(today)) button.classList.add("today");
+        if (key === dateKey(selectedDate)) button.classList.add("selected");
+        if (notes[key]) button.classList.add("has-note");
+        button.setAttribute("role", "gridcell");
+        button.setAttribute("aria-label", `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일${notes[key] ? ", 기록 있음" : ""}`);
+        if (key === dateKey(selectedDate)) button.setAttribute("aria-pressed", "true");
+        button.innerHTML = `<span class="day-number">${date.getDate()}</span>`;
+        button.addEventListener("click", () => {
+          selectedDate = date;
+          visibleYear = date.getFullYear();
+          visibleMonth = date.getMonth();
+          renderCalendar();
+          renderNote();
+        });
+        grid.append(button);
+      }
+      renderFriend();
+    }
+
+    function renderNote() {
+      const key = dateKey(selectedDate);
+      document.getElementById("note-date").textContent = `${selectedDate.getFullYear()}.${String(selectedDate.getMonth() + 1).padStart(2, "0")}.${String(selectedDate.getDate()).padStart(2, "0")}`;
+      document.getElementById("note-input").value = notes[key] || "";
+      document.getElementById("save-status").textContent = notes[key] ? "이 날의 기록이 있어요" : "이 기기에만 저장돼요";
+    }
+
+    document.getElementById("previous-month").addEventListener("click", () => {
+      const date = new Date(visibleYear, visibleMonth - 1, 1);
+      visibleYear = date.getFullYear();
+      visibleMonth = date.getMonth();
+      selectedDate = new Date(visibleYear, visibleMonth, 1);
+      renderCalendar();
+      renderNote();
+    });
+    document.getElementById("next-month").addEventListener("click", () => {
+      const date = new Date(visibleYear, visibleMonth + 1, 1);
+      visibleYear = date.getFullYear();
+      visibleMonth = date.getMonth();
+      selectedDate = new Date(visibleYear, visibleMonth, 1);
+      renderCalendar();
+      renderNote();
+    });
+    document.getElementById("go-today").addEventListener("click", () => {
+      visibleYear = today.getFullYear();
+      visibleMonth = today.getMonth();
+      selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      renderCalendar();
+      renderNote();
+    });
+    document.getElementById("save-note").addEventListener("click", () => {
+      const key = dateKey(selectedDate);
+      const value = document.getElementById("note-input").value.trim();
+      if (value) notes[key] = value;
+      else delete notes[key];
+      try {
+        localStorage.setItem("one-step-calendar-notes", JSON.stringify(notes));
+        document.getElementById("save-status").textContent = value ? "기록을 저장했어요 ✓" : "기록을 지웠어요";
+        renderCalendar();
+      } catch (error) {
+        console.error("기록을 저장하지 못했어요.", error);
+        document.getElementById("save-status").textContent = "저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요.";
+      }
+    });
+
+    renderCalendar();
+    renderNote();
+  </script>
+</body>
+</html>
